@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>U-Flash · Underwater Optical Comm</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#020c14;--surface:#041824;--card:#071f2e;--border:#0e4a6e;
+    --accent:#00d4ff;--accent2:#00ff9d;--warn:#ff6b35;
+    --text:#c8e8f8;--muted:#4a7a99;--glow:0 0 20px rgba(0,212,255,.3);
+    --pre-col:#ffe066;--post-col:#ff6b35;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at 20% 80%,rgba(0,100,160,.12) 0%,transparent 60%),
+               radial-gradient(ellipse at 80% 20%,rgba(0,212,255,.07) 0%,transparent 50%);
+    animation:bgP 8s ease-in-out infinite alternate}
+  @keyframes bgP{from{opacity:.6}to{opacity:1}}
+  .particles{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .particle{position:absolute;width:2px;height:2px;background:var(--accent);border-radius:50%;opacity:0;animation:fp linear infinite}
+  @keyframes fp{0%{transform:translateY(100vh);opacity:0}10%{opacity:.5}90%{opacity:.2}100%{transform:translateY(-10vh) translateX(var(--dx,20px));opacity:0}}
+  .app{position:relative;z-index:1;max-width:500px;margin:0 auto;padding:16px}
+  header{text-align:center;padding:18px 0 14px;border-bottom:1px solid var(--border);margin-bottom:18px}
+  header h1{font-family:'Orbitron',monospace;font-size:1.8rem;font-weight:900;color:var(--accent);text-shadow:var(--glow)}
+  header p{font-size:.68rem;color:var(--muted);margin-top:4px;letter-spacing:.15em;text-transform:uppercase}
+  .mode-tabs{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px}
+  .mode-tab{flex:1;padding:12px;background:var(--card);border:none;color:var(--muted);font-family:'Orbitron',monospace;font-size:.75rem;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:all .2s;text-transform:uppercase}
+  .mode-tab.active{background:var(--accent);color:var(--bg)}
+  .mode-tab:not(.active):hover{background:var(--surface);color:var(--text)}
+  .panel{display:none}.panel.active{display:block}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px;position:relative}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5}
+  .card-title{font-family:'Orbitron',monospace;font-size:.63rem;color:var(--accent);letter-spacing:.2em;text-transform:uppercase;margin-bottom:12px}
+  label{display:block;font-size:.63rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin:10px 0 4px}
+  label:first-of-type{margin-top:0}
+  input[type=text],input[type=number],textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--accent2);font-family:'Share Tech Mono',monospace;font-size:.88rem;padding:8px 10px;outline:none;transition:border-color .2s}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:var(--glow)}
+  textarea{resize:vertical;min-height:52px}
+  .row2{display:flex;gap:10px}.row2>*{flex:1}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border:none;border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:.8rem;cursor:pointer;transition:all .2s;letter-spacing:.06em;width:100%;margin-top:6px}
+  .btn-primary{background:var(--accent);color:var(--bg)}.btn-primary:hover:not(:disabled){background:#33ddff;box-shadow:var(--glow)}
+  .btn-success{background:var(--accent2);color:var(--bg)}.btn-success:hover:not(:disabled){background:#33ffb8}
+  .btn-warn{background:var(--warn);color:#fff}.btn-warn:hover:not(:disabled){background:#ff8555}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn-row{display:flex;gap:8px}.btn-row .btn{flex:1}
+  .sbadge{display:inline-block;font-size:.63rem;padding:3px 9px;border-radius:3px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+  .s-idle{background:rgba(74,122,153,.2);color:var(--muted);border:1px solid var(--border)}
+  .s-send{background:rgba(255,107,53,.2);color:var(--warn);border:1px solid var(--warn);animation:blink .5s step-end infinite}
+  .s-ok{background:rgba(0,255,157,.15);color:var(--accent2);border:1px solid var(--accent2)}
+  .s-active{background:rgba(0,212,255,.15);color:var(--accent);border:1px solid var(--accent)}
+  .s-pre{background:rgba(255,224,102,.15);color:var(--pre-col);border:1px solid var(--pre-col);animation:blink .4s step-end infinite}
+  @keyframes blink{50%{opacity:.3}}
+  #preBanner{display:none;text-align:center;padding:10px;background:rgba(255,224,102,.1);border:1px solid var(--pre-col);border-radius:6px;color:var(--pre-col);font-family:'Orbitron',monospace;font-size:.7rem;letter-spacing:.15em;margin-bottom:12px;animation:blink .6s step-end infinite}
+  #preBanner.show{display:block}
+  .prog-wrap{height:6px;background:var(--bg);border-radius:3px;border:1px solid var(--border);overflow:hidden;margin:8px 0}
+  .prog-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;width:0%;transition:width .08s;box-shadow:0 0 8px var(--accent)}
+  #videoEl{width:100%;border-radius:6px;border:1px solid var(--border);background:#000;display:block;max-height:180px;object-fit:cover}
+  #debugCanvas{width:100%;border-radius:6px;border:1px solid var(--border);background:#000;display:block;margin-top:8px;height:80px}
+  .lrow{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .llbl{font-size:.6rem;color:var(--muted);white-space:nowrap;min-width:56px}
+  .lbw{flex:1;height:12px;background:var(--bg);border-radius:3px;border:1px solid var(--border);overflow:hidden}
+  .lbf{height:100%;background:linear-gradient(90deg,#003f5c,var(--accent));width:0%;transition:width .08s}
+  .lval{font-size:.72rem;color:var(--accent2);min-width:34px;text-align:right}
+  .bitdisp{font-family:'Share Tech Mono',monospace;font-size:.82rem;letter-spacing:.1em;word-break:break-all;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;min-height:40px;line-height:1.7}
+  .b1{color:var(--accent2)}.b0{color:var(--muted)}.bpre{color:var(--pre-col)}.bpost{color:var(--post-col)}
+  .result-box{background:rgba(0,255,157,.06);border:1px solid var(--accent2);border-radius:6px;padding:14px;margin-top:4px}
+  .rl{font-size:.6rem;color:var(--accent2);letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px}
+  .rt{font-size:1.2rem;color:var(--accent2);word-break:break-word;margin-bottom:6px}
+  .rb{font-size:.68rem;color:var(--muted);word-break:break-all;line-height:1.5}
+  .log{font-size:.62rem;color:var(--muted);max-height:80px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 8px;line-height:1.7}
+  .log .le{color:var(--warn)}.log .ls{color:var(--accent)}.log .lp{color:var(--pre-col)}
+  #flashOverlay{display:none;position:fixed;inset:0;z-index:9999}
+  .helper{font-size:.61rem;color:var(--muted);margin-top:4px;line-height:1.4}
+  .divider{height:1px;background:var(--border);margin:12px 0;opacity:.4}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="particles" id="particles"></div>
+<div id="flashOverlay"></div>
+
+<div class="app">
+  <header>
+    <h1>U-FLASH</h1>
+    <p>Underwater Optical Communication · Sprint-1</p>
+  </header>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('sender')">⚡ Sender</button>
+    <button class="mode-tab" onclick="setMode('receiver')">📡 Receiver</button>
+  </div>
+
+  <!-- ══════════════ SENDER ══════════════ -->
+  <div class="panel active" id="senderPanel">
+    <div class="card">
+      <div class="card-title">Message</div>
+      <label>Input Mode</label>
+      <select id="sMode" onchange="onModeChange()">
+        <option value="text">Text (ASCII)</option>
+        <option value="bits">Raw Bits</option>
+      </select>
+      <div id="sTextWrap">
+        <label>Text Message</label>
+        <textarea id="sText" placeholder="Hello">Hi</textarea>
+      </div>
+      <div id="sBitsWrap" style="display:none">
+        <label>Raw Bits</label>
+        <textarea id="sBits" placeholder="1010...">10110010</textarea>
+      </div>
+      <div class="row2" style="margin-top:10px">
+        <div>
+          <label>Bit Duration Tb (ms)</label>
+          <input type="number" id="sTb" value="300" min="80" max="3000" step="10">
+        </div>
+        <div>
+          <label>Guard Zeros</label>
+          <input type="number" id="sGuard" value="4" min="0" max="16">
+        </div>
+      </div>
+      <div class="helper">Guard zeros between SOP and payload — increase if receiver misses first bits.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Packet Preview</div>
+      <div class="bitdisp" id="sPktPrev">–</div>
+      <div class="helper" id="sPktInfo">–</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Transmitter</div>
+      <span class="sbadge s-idle" id="sStatus">IDLE</span>
+      <div class="prog-wrap"><div class="prog-bar" id="sProgress"></div></div>
+      <div id="sProgLbl" style="font-size:.63rem;color:var(--muted);margin-bottom:8px">–</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnTorch" onclick="initTorch()">⚡ Init Torch / Screen</button>
+      </div>
+      <div id="torchInfo" class="helper">Tap to request camera. Android Chrome = hardware torch; others = full-screen flash.</div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-success" id="btnSend" onclick="sendPacket()" disabled>▶ Send</button>
+        <button class="btn btn-warn" id="btnStopS" onclick="stopSend()" disabled>■ Stop</button>
+      </div>
+      <div class="divider"></div>
+      <div class="log" id="sLog"><span class="ls">// sender ready</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ RECEIVER ══════════════ -->
+  <div class="panel" id="receiverPanel">
+    <div class="card">
+      <div class="card-title">Decode Config</div>
+      <div class="row2">
+        <div>
+          <label>Bit Duration Tb (ms)</label>
+          <input type="number" id="rTbIn" value="300" min="80" max="3000" step="10">
+        </div>
+        <div>
+          <label>ROI Size (%)</label>
+          <input type="number" id="rROI" value="50" min="10" max="100">
+        </div>
+      </div>
+      <div class="row2" style="margin-top:10px">
+        <div>
+          <label>Threshold Mode</label>
+          <select id="rThresh">
+            <option value="adaptive">Adaptive Min/Max</option>
+            <option value="otsu">Otsu Histogram</option>
+            <option value="fixed">Fixed 128</option>
+          </select>
+        </div>
+        <div>
+          <label>Max Payload (bits)</label>
+          <input type="number" id="rMaxPay" value="512" min="8" max="4096">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Camera + Signal Monitor</div>
+      <video id="videoEl" autoplay muted playsinline></video>
+      <canvas id="debugCanvas" width="460" height="80"></canvas>
+      <div class="lrow" style="margin-top:8px">
+        <span class="llbl">LUMA/frame</span>
+        <div class="lbw"><div class="lbf" id="lumaBar"></div></div>
+        <span class="lval" id="lumaVal">–</span>
+      </div>
+      <div class="lrow">
+        <span class="llbl">BIT·AVG</span>
+        <div class="lbw"><div class="lbf" id="bitLBar" style="background:linear-gradient(90deg,#003f5c,var(--accent2))"></div></div>
+        <span class="lval" id="bitLVal">–</span>
+      </div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">
+        Thresh:<span id="thVal" style="color:var(--accent)">–</span> &nbsp;
+        Min:<span id="minL">–</span> Max:<span id="maxL">–</span> &nbsp;
+        Samp/bit:<span id="spb" style="color:var(--accent2)">–</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Receiver Control</div>
+      <span class="sbadge s-idle" id="rStatus">IDLE</span>
+      <div id="preBanner">⚡ PREAMBLE LOCKED — RECEIVING PAYLOAD</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnStartRx" onclick="startReceiver()">📷 Start Camera</button>
+        <button class="btn btn-warn" id="btnStopRx" onclick="stopReceiver()" disabled>■ Stop</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Bit Stream (last 80)</div>
+      <div class="bitdisp" id="rBitDisp">–</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:5px">
+        Total bits: <span id="rBufCnt" style="color:var(--accent)">0</span> &nbsp;|&nbsp;
+        Packets: <span id="rPktCnt" style="color:var(--accent2)">0</span> &nbsp;|&nbsp;
+        State: <span id="rxStateLbl" style="color:var(--pre-col)">HUNTING</span>
+      </div>
+    </div>
+
+    <div id="rResultArea"></div>
+
+    <div class="card">
+      <div class="card-title">Receiver Log</div>
+      <div class="log" id="rLog"><span class="ls">// receiver ready</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Particles ────────────────────────────────────────────────
+(()=>{
+  const c=document.getElementById('particles');
+  for(let i=0;i<20;i++){
+    const p=document.createElement('div');p.className='particle';
+    p.style.cssText=`left:${Math.random()*100}%;--dx:${(Math.random()-.5)*60}px;animation-duration:${7+Math.random()*9}s;animation-delay:${Math.random()*8}s`;
+    c.appendChild(p);
+  }
+})();
+
+// ── Protocol constants ───────────────────────────────────────
+// Packet structure: PREAMBLE + SOP + GUARD_ZEROS + PAYLOAD + EOP
+const PREAMBLE = '10101010';   // 8-bit sync word
+const SOP      = '11110000';   // Start-Of-Payload (after preamble)
+const EOP      = '00001111';   // End-Of-Payload
+
+// ── Text encoding ────────────────────────────────────────────
+const textToBits = s => [...s].map(c=>c.charCodeAt(0).toString(2).padStart(8,'0')).join('');
+const bitsToText = b => {
+  const out=[];
+  for(let i=0;i+8<=b.length;i+=8){
+    const code=parseInt(b.slice(i,i+8),2);
+    if(code>=32&&code<127) out.push(String.fromCharCode(code));
+  }
+  return out.join('');
+};
+
+// ── Mode switch ──────────────────────────────────────────────
+function setMode(m){
+  ['senderPanel','receiverPanel'].forEach((id,i)=>{
+    document.getElementById(id).classList.toggle('active',(m==='sender'&&i===0)||(m==='receiver'&&i===1));
+  });
+  document.querySelectorAll('.mode-tab').forEach((t,i)=>
+    t.classList.toggle('active',(m==='sender'&&i===0)||(m==='receiver'&&i===1)));
+}
+
+// ── Sender: input mode change ────────────────────────────────
+function onModeChange(){
+  const isTxt=document.getElementById('sMode').value==='text';
+  document.getElementById('sTextWrap').style.display=isTxt?'':'none';
+  document.getElementById('sBitsWrap').style.display=isTxt?'none':'';
+  updatePreview();
+}
+['sText','sBits','sGuard','sTb'].forEach(id=>
+  document.getElementById(id).addEventListener('input',updatePreview));
+
+function getPayloadBits(){
+  if(document.getElementById('sMode').value==='text'){
+    const t=document.getElementById('sText').value;
+    return t?textToBits(t):'01001000 01101001'.replace(/ /g,'');
+  }
+  return document.getElementById('sBits').value.replace(/[^01]/g,'');
+}
+
+function buildPacket(){
+  const payload=getPayloadBits();
+  const guard='0'.repeat(parseInt(document.getElementById('sGuard').value)||0);
+  return PREAMBLE+SOP+guard+payload+EOP;
+}
+
+function updatePreview(){
+  const payload=getPayloadBits();
+  const guard='0'.repeat(parseInt(document.getElementById('sGuard').value)||0);
+  const packet=PREAMBLE+SOP+guard+payload+EOP;
+  const cc=(bits,cls)=>bits.split('').map(b=>`<span class="${cls}">${b}</span>`).join('');
+  document.getElementById('sPktPrev').innerHTML=
+    cc(PREAMBLE,'bpre')+cc(SOP,'bpre')+cc(guard,'b0')+
+    payload.split('').map(b=>`<span class="b${b}">${b}</span>`).join('')+
+    cc(EOP,'bpost');
+  const isText=document.getElementById('sMode').value==='text';
+  const txt=isText?` "${document.getElementById('sText').value||''}"`:''
+  document.getElementById('sPktInfo').textContent=
+    `Total: ${packet.length} bits | Payload: ${payload.length} bits${txt} | Pre+SOP: ${PREAMBLE.length+SOP.length} | EOP: ${EOP.length}`;
+}
+updatePreview();
+
+// ── Sender: torch/screen ────────────────────────────────────
+let torchStream=null,torchTrack=null,torchOK=false,isSending=false,sendTimer=null;
+
+async function initTorch(){
+  const btn=document.getElementById('btnTorch');btn.disabled=true;
+  sLog('Requesting camera access…');
+  try{
+    torchStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    torchTrack=torchStream.getVideoTracks()[0];
+    const caps=torchTrack.getCapabilities?torchTrack.getCapabilities():{};
+    torchOK=!!caps.torch;
+    const info=torchOK?'✓ Hardware torch (Android Chrome)':'⚠ Screen flash fallback active';
+    sLog(torchOK?'✓ Torch ready!':'Torch N/A — using screen flash',torchOK?'ok':'');
+    document.getElementById('torchInfo').textContent=info;
+    if(torchOK)document.getElementById('torchInfo').style.color='var(--accent2)';
+    setSStatus('ok',torchOK?'TORCH READY':'SCREEN READY');
+  }catch(e){
+    sLog('Camera denied: '+e.message+' — screen flash will be used');
+    torchOK=false;setSStatus('ok','SCREEN READY');
+  }
+  document.getElementById('btnSend').disabled=false;btn.disabled=false;
+}
+
+async function setBit(v){
+  if(torchOK&&torchTrack){
+    try{await torchTrack.applyConstraints({advanced:[{torch:v===1}]});}catch(e){}
+  }else{
+    const o=document.getElementById('flashOverlay');
+    o.style.display=v===1?'block':'none';
+    o.style.background=v===1?'white':'black';
+  }
+}
+
+async function sendPacket(){
+  if(isSending)return;
+  const Tb=parseInt(document.getElementById('sTb').value)||300;
+  const pkt=buildPacket();
+  isSending=true;
+  document.getElementById('btnSend').disabled=true;
+  document.getElementById('btnStopS').disabled=false;
+  setSStatus('send','TX…');
+  sLog(`Sending ${pkt.length} bits @ Tb=${Tb}ms`);
+  const o=document.getElementById('flashOverlay');
+  if(!torchOK){o.style.display='block';o.style.background='black';}
+  let idx=0;
+  const tick=async()=>{
+    if(!isSending||idx>=pkt.length){
+      await setBit(0);
+      if(!torchOK)o.style.display='none';
+      isSending=false;
+      document.getElementById('btnSend').disabled=false;
+      document.getElementById('btnStopS').disabled=true;
+      setSStatus('ok','DONE ✓');setProgress(0);
+      document.getElementById('sProgLbl').textContent='Complete';
+      sLog('✓ Done','ok');return;
+    }
+    await setBit(parseInt(pkt[idx]));
+    setProgress(Math.round(idx/pkt.length*100));
+    document.getElementById('sProgLbl').textContent=`Bit ${idx+1}/${pkt.length}  [${pkt[idx]}]`;
+    idx++;sendTimer=setTimeout(tick,Tb);
+  };
+  tick();
+}
+function stopSend(){
+  clearTimeout(sendTimer);isSending=false;setBit(0);
+  document.getElementById('flashOverlay').style.display='none';
+  document.getElementById('btnSend').disabled=false;
+  document.getElementById('btnStopS').disabled=true;
+  setSStatus('idle','IDLE');setProgress(0);sLog('Stopped');
+}
+function setProgress(p){document.getElementById('sProgress').style.width=p+'%'}
+function setSStatus(t,l){const e=document.getElementById('sStatus');e.textContent=l;e.className='sbadge s-'+t}
+function sLog(msg,t){
+  const log=document.getElementById('sLog'),line=document.createElement('div');
+  if(t==='ok')line.className='ls';else if(t==='err'||t==='warn')line.className='le';
+  line.textContent='> '+msg;log.appendChild(line);log.scrollTop=log.scrollHeight;
+}
+
+// ── Receiver globals ────────────────────────────────────────
+let rxStream=null,rxAF=null,rxRunning=false;
+let rxBitBuf=[];          // all bits seen (for display)
+let rxSamples=[];         // luma samples in current bit window
+let rxBitT0=0;            // absolute clock anchor (ms, from performance.now())
+let rxBitIdx=0;           // bits committed since clock anchor
+let rxMinL=255,rxMaxL=0;
+let rxHist=new Int32Array(256);
+let rxGraph=[];
+let rxPktCnt=0;
+let rxState='HUNTING';    // HUNTING | RECEIVING
+let rxHuntBuf=[];         // recent decoded bits used for preamble search
+let rxPayBits=[];         // bits after preamble+SOP for current packet
+let rxFrameN=0;
+let rxLastBitTs=0;        // for HUNTING mode clock
+
+function rLog(msg,t){
+  const log=document.getElementById('rLog'),line=document.createElement('div');
+  if(t==='ok')line.className='ls';else if(t==='err'||t==='warn')line.className='le';else if(t==='pre')line.className='lp';
+  line.textContent='> '+msg;log.appendChild(line);log.scrollTop=log.scrollHeight;
+}
+
+// ── Receiver: start/stop ────────────────────────────────────
+async function startReceiver(){
+  document.getElementById('btnStartRx').disabled=true;
+  rLog('Requesting camera…');
+  try{
+    rxStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:640},height:{ideal:480},frameRate:{ideal:60}}
+    });
+    const vid=document.getElementById('videoEl');
+    vid.srcObject=rxStream;
+    await new Promise(r=>vid.onloadedmetadata=r);
+    await vid.play();
+    resetRx();
+    rxRunning=true;
+    document.getElementById('btnStopRx').disabled=false;
+    setRxStatus('active','RECEIVING');
+    rLog('✓ Camera active. Hunting preamble…','ok');
+    rxMain();
+  }catch(e){
+    rLog('Camera error: '+e.message,'err');
+    document.getElementById('btnStartRx').disabled=false;
+  }
+}
+function stopReceiver(){
+  rxRunning=false;if(rxAF)cancelAnimationFrame(rxAF);
+  if(rxStream)rxStream.getTracks().forEach(t=>t.stop());
+  rxStream=null;document.getElementById('videoEl').srcObject=null;
+  document.getElementById('btnStartRx').disabled=false;
+  document.getElementById('btnStopRx').disabled=true;
+  setRxStatus('idle','IDLE');hideBanner();rLog('Stopped');
+}
+function resetRx(){
+  rxBitBuf=[];rxSamples=[];rxBitT0=0;rxBitIdx=0;
+  rxMinL=255;rxMaxL=0;rxHist=new Int32Array(256);rxGraph=[];
+  rxState='HUNTING';rxHuntBuf=[];rxPayBits=[];
+  rxFrameN=0;rxLastBitTs=0;
+  hideBanner();
+  document.getElementById('rBufCnt').textContent='0';
+  document.getElementById('rxStateLbl').textContent='HUNTING';
+}
+function setRxStatus(t,l){const e=document.getElementById('rStatus');e.textContent=l;e.className='sbadge s-'+t}
+function showBanner(){document.getElementById('preBanner').classList.add('show')}
+function hideBanner(){document.getElementById('preBanner').classList.remove('show')}
+
+// ── Main RX loop ────────────────────────────────────────────
+function rxMain(){
+  const vid=document.getElementById('videoEl');
+  const off=document.createElement('canvas');
+  off.width=vid.videoWidth||320;off.height=vid.videoHeight||240;
+  const ctx=off.getContext('2d',{willReadFrequently:true});
+
+  function frame(ts){
+    if(!rxRunning)return;
+    rxAF=requestAnimationFrame(frame);
+    rxFrameN++;
+    ctx.drawImage(vid,0,0,off.width,off.height);
+
+    // ROI luma
+    const rp=parseInt(document.getElementById('rROI').value)/100;
+    const rW=Math.floor(off.width*rp),rH=Math.floor(off.height*rp);
+    const rX=Math.floor((off.width-rW)/2),rY=Math.floor((off.height-rH)/2);
+    const px=ctx.getImageData(rX,rY,rW,rH).data;
+    let sum=0;const cnt=px.length>>2;
+    for(let i=0;i<px.length;i+=4)sum+=((77*px[i]+150*px[i+1]+29*px[i+2])>>8);
+    const luma=sum/cnt;
+
+    // Running stats
+    rxMinL=Math.min(rxMinL,luma)*0.998+luma*0.002;if(luma<rxMinL)rxMinL=luma;
+    rxMaxL=Math.max(rxMaxL,luma)*0.998+luma*0.002;if(luma>rxMaxL)rxMaxL=luma;
+    rxMinL=Math.max(0,rxMinL);rxMaxL=Math.min(255,rxMaxL);
+    if(rxMaxL-rxMinL<10)rxMaxL=rxMinL+10;
+    rxHist[Math.min(255,luma|0)]++;
+
+    const threshold=getThreshold();
+
+    // UI updates (throttled)
+    if(rxFrameN%4===0){
+      document.getElementById('lumaBar').style.width=(luma/255*100)+'%';
+      document.getElementById('lumaVal').textContent=luma.toFixed(0);
+      document.getElementById('minL').textContent=rxMinL.toFixed(0);
+      document.getElementById('maxL').textContent=rxMaxL.toFixed(0);
+      document.getElementById('thVal').textContent=threshold.toFixed(0);
+    }
+
+    const rTb=parseInt(document.getElementById('rTbIn').value)||300;
+    rxSamples.push(luma);
+
+    if(rxState==='HUNTING'){
+      // ── Hunting: free-running timer, re-anchor each window ──
+      if(rxLastBitTs===0)rxLastBitTs=ts;
+      if(ts-rxLastBitTs>=rTb){
+        // Advance anchor by one Tb (not to ts) to avoid clock drift
+        rxLastBitTs+=rTb;
+        commitHuntBit(rxSamples,threshold,ts);
+        rxSamples=[];
+      }
+    } else {
+      // ── Receiving: hard-anchored absolute clock ──
+      // Expected end of current bit window:
+      const expectedEnd=rxBitT0+(rxBitIdx+1)*rTb;
+      if(ts>=expectedEnd){
+        // How many Tb windows have elapsed? (handles dropped frames)
+        const elapsed=ts-rxBitT0;
+        const expectedIdx=Math.floor(elapsed/rTb);
+        // Commit current samples as one bit
+        commitRxBit(rxSamples,threshold);
+        rxSamples=[];
+        // If we skipped windows (e.g. frame drop), fill with repeated value
+        while(rxBitIdx<=expectedIdx-1){
+          // replicate last bit as best guess for skipped window
+          const lastBit=rxPayBits.length>0?rxPayBits[rxPayBits.length-1]:0;
+          appendPayBit(lastBit,threshold);
+        }
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── Commit a bit in HUNTING mode ────────────────────────────
+function commitHuntBit(samples,threshold,ts){
+  if(samples.length===0)return;
+  const avg=samples.reduce((a,b)=>a+b,0)/samples.length;
+  const bit=avg>threshold?1:0;
+  document.getElementById('spb').textContent=samples.length;
+  if(rxFrameN%4===0){
+    document.getElementById('bitLBar').style.width=(avg/255*100)+'%';
+    document.getElementById('bitLVal').textContent=avg.toFixed(0);
+  }
+
+  rxBitBuf.push(bit);
+  if(rxBitBuf.length>80)rxBitBuf.shift();
+  rxHuntBuf.push(bit);
+  if(rxHuntBuf.length>32)rxHuntBuf.shift();
+
+  rxGraph.push({luma:avg,bit,threshold,state:'H'});
+  if(rxGraph.length>120)rxGraph.shift();
+  renderBitDisp();
+  drawGraph();
+
+  // Check for PREAMBLE+SOP
+  const recent=rxHuntBuf.join('');
+  const searchFor=PREAMBLE+SOP;
+  const pi=recent.lastIndexOf(searchFor);
+  if(pi>=0){
+    // Lock!
+    rxState='RECEIVING';
+    rxBitT0=rxLastBitTs;   // anchor clock to last bit window boundary
+    rxBitIdx=0;
+    rxPayBits=[];
+    // Any bits in rxHuntBuf after SOP are payload bits
+    const extra=rxHuntBuf.slice(pi+searchFor.length);
+    extra.forEach(b=>appendPayBit(b,threshold));
+    document.getElementById('rxStateLbl').textContent='LOCKED';
+    setRxStatus('pre','LOCKED');showBanner();
+    rLog('⚡ PREAMBLE + SOP LOCKED','pre');
+    rxHuntBuf=[];
+  }
+
+  document.getElementById('rBufCnt').textContent=rxBitBuf.length;
+}
+
+// ── Commit a bit in RECEIVING mode ──────────────────────────
+function commitRxBit(samples,threshold){
+  if(samples.length===0){samples=[rxMinL];}
+  const avg=samples.reduce((a,b)=>a+b,0)/samples.length;
+  const bit=avg>threshold?1:0;
+  document.getElementById('spb').textContent=samples.length;
+  if(rxFrameN%4===0){
+    document.getElementById('bitLBar').style.width=(avg/255*100)+'%';
+    document.getElementById('bitLVal').textContent=avg.toFixed(0);
+  }
+  rxGraph.push({luma:avg,bit,threshold,state:'R'});
+  if(rxGraph.length>120)rxGraph.shift();
+  drawGraph();
+  appendPayBit(bit,threshold);
+}
+
+function appendPayBit(bit,threshold){
+  rxBitIdx++;
+  rxPayBits.push(bit);
+  rxBitBuf.push(bit);
+  if(rxBitBuf.length>80)rxBitBuf.shift();
+  renderBitDisp();
+  document.getElementById('rBufCnt').textContent=rxBitBuf.length;
+  tryDecode();
+  // Safety: too many bits → give up
+  const maxPay=parseInt(document.getElementById('rMaxPay').value)||512;
+  if(rxPayBits.length>maxPay+EOP.length+32){
+    rLog('⚠ Max payload exceeded — resetting','warn');
+    backToHunting();
+  }
+}
+
+function backToHunting(){
+  rxState='HUNTING';rxLastBitTs=0;rxHuntBuf=[];rxPayBits=[];
+  hideBanner();setRxStatus('active','RECEIVING');
+  document.getElementById('rxStateLbl').textContent='HUNTING';
+}
+
+// ── Decode ──────────────────────────────────────────────────
+function tryDecode(){
+  const ps=rxPayBits.join('');
+  // Find EOP
+  const ei=ps.indexOf(EOP);
+  if(ei<0)return;
+
+  // Strip leading guard zeros
+  let start=0;
+  while(start<ei&&ps[start]==='0')start++;
+  const payload=ps.slice(start,ei);
+  if(payload.length<8)return; // too short
+
+  rxPktCnt++;
+  document.getElementById('rPktCnt').textContent=rxPktCnt;
+
+  const textOut=bitsToText(payload);
+  const isPrintable=textOut.length>0;
+
+  rLog(`✓ Packet #${rxPktCnt}: "${isPrintable?textOut:'[binary]'}" (${payload.length} bits)`,'ok');
+
+  document.getElementById('rResultArea').innerHTML=`
+    <div class="result-box">
+      <div class="rl">✓ Decoded Message #${rxPktCnt}</div>
+      ${isPrintable?`<div class="rt">${esc(textOut)}</div>`:''}
+      <div class="rb">${payload}</div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:6px">
+        Bits: ${payload.length} &nbsp;|&nbsp; Chars: ${Math.floor(payload.length/8)} &nbsp;|&nbsp; Packet #${rxPktCnt}
+      </div>
+    </div>`;
+
+  backToHunting();
+  rLog('Hunting for next preamble…');
+}
+
+// ── Threshold ───────────────────────────────────────────────
+function getThreshold(){
+  const m=document.getElementById('rThresh').value;
+  if(m==='fixed')return 128;
+  if(m==='adaptive')return(rxMinL+rxMaxL)/2;
+  // Otsu
+  const total=rxHist.reduce((a,b)=>a+b,0);
+  if(total<100)return(rxMinL+rxMaxL)/2;
+  let sumAll=0;for(let i=0;i<256;i++)sumAll+=i*rxHist[i];
+  let wB=0,sB=0,best=0,bestT=128;
+  for(let t=0;t<256;t++){
+    wB+=rxHist[t];if(!wB)continue;
+    const wF=total-wB;if(!wF)break;
+    sB+=t*rxHist[t];
+    const mB=sB/wB,mF=(sumAll-sB)/wF;
+    const v=wB*wF*(mB-mF)*(mB-mF);
+    if(v>best){best=v;bestT=t;}
+  }
+  return bestT;
+}
+
+// ── Render bits ─────────────────────────────────────────────
+function renderBitDisp(){
+  const el=document.getElementById('rBitDisp');
+  if(!rxBitBuf.length){el.innerHTML='–';return;}
+  el.innerHTML=rxBitBuf.map(b=>`<span class="b${b}">${b}</span>`).join('');
+}
+
+// ── Debug graph ─────────────────────────────────────────────
+function drawGraph(){
+  const cv=document.getElementById('debugCanvas');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.fillStyle='#020c14';ctx.fillRect(0,0,W,H);
+  const n=rxGraph.length;if(n<2)return;
+  const th=rxGraph[n-1].threshold;
+  const thY=H-(th/255)*H;
+  ctx.strokeStyle='rgba(255,107,53,.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(0,thY);ctx.lineTo(W,thY);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle='#00d4ff';ctx.lineWidth=1.5;ctx.beginPath();
+  rxGraph.forEach((d,i)=>{
+    const x=(i/(n-1))*W,y=H-(d.luma/255)*H;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  rxGraph.forEach((d,i)=>{
+    const x=(i/(n-1))*W,y=H-(d.luma/255)*H;
+    ctx.fillStyle=d.state==='R'?(d.bit?'#00ff9d':'#ff6b35'):(d.bit?'rgba(0,255,157,.4)':'rgba(74,122,153,.4)');
+    ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();
+  });
+  ctx.fillStyle=rxState==='HUNTING'?'rgba(0,212,255,.7)':'rgba(255,224,102,.9)';
+  ctx.font='9px Share Tech Mono';ctx.fillText(rxState,4,12);
+  ctx.fillStyle='rgba(255,107,53,.6)';ctx.fillText('THRESH',4,24);
+}
+
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+</script>
+</body>
+</html>
